@@ -144,7 +144,7 @@ func (s *Service) Reject(paymentID string) error {
 		return err
 	}
 
-	acc.Balance+=pay.Amount
+	acc.Balance += pay.Amount
 
 	return nil
 
