@@ -6,7 +6,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/me0888/wallet/pkg/types"
-	
 )
 
 var ErrPhoneRegistered = errors.New("phone alredy registred")
@@ -144,8 +143,34 @@ func (s *Service) Reject(paymentID string) error {
 		return err
 	}
 
-	acc.Balance+=pay.Amount
+	acc.Balance += pay.Amount
 
 	return nil
 
+}
+
+
+func (s *Service) Repeat(paymentID string) (*types.Payment, error) {
+	pay, err := s.FindPaymentByID(paymentID)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	acc, err := s.FindAccountByID(pay.AccountID)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	payID := uuid.New().String()
+	payment := &types.Payment{
+		ID:        payID,
+		AccountID: acc.ID,
+		Amount:    pay.Amount,
+		Category:  pay.Category,
+		Status:    types.PaymentStatusInProgress,
+	}
+	s.payments = append(s.payments, payment)
+	return payment, nil
 }
