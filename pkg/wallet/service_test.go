@@ -3,9 +3,10 @@ package wallet
 import (
 	"fmt"
 
-	"github.com/me0888/wallet/pkg/types"
 	"reflect"
 	"testing"
+
+	"github.com/me0888/wallet/pkg/types"
 )
 
 type testService struct {
@@ -218,6 +219,7 @@ func TestService_Repeat_sucsses(t *testing.T) {
 		t.Errorf("Repeat(): can not find account by id, error = %v", err)
 		return
 	}
+	
 	if savedAccount.Balance == defaultTestAccount.balance {
 		t.Errorf("Repeat(): balance did not changed, error = %v", err)
 		return

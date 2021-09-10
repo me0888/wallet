@@ -149,7 +149,6 @@ func (s *Service) Reject(paymentID string) error {
 
 }
 
-
 func (s *Service) Repeat(paymentID string) (*types.Payment, error) {
 	pay, err := s.FindPaymentByID(paymentID)
 	if err != nil {
@@ -171,6 +170,9 @@ func (s *Service) Repeat(paymentID string) (*types.Payment, error) {
 		Category:  pay.Category,
 		Status:    types.PaymentStatusInProgress,
 	}
+
+	acc.Balance -= pay.Amount
+
 	s.payments = append(s.payments, payment)
 	return payment, nil
 }
