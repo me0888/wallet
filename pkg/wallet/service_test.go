@@ -65,15 +65,9 @@ func TestService_FindAccountByID_success(t *testing.T) {
 func TestService_FindAccountByID_notFound(t *testing.T) {
 
 	svc := &Service{}
-	_, err := svc.RegisterAccount("09")
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	_, err:= svc.FindAccountByID(2000)
 
-	_, err = svc.FindAccountByID(2)
-
-	if err == nil {
+	if err != ErrAccountNotFound {
 		t.Error(err)
 		return
 	}
