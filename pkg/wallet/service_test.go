@@ -65,11 +65,75 @@ func TestService_FindAccountByID_success(t *testing.T) {
 func TestService_FindAccountByID_notFound(t *testing.T) {
 
 	svc := &Service{}
-	_, err:= svc.FindAccountByID(2000)
+	_, err := svc.FindAccountByID(2000)
 
 	if err != ErrAccountNotFound {
 		t.Error(err)
 		return
 	}
 
+}
+
+func TestService_FindPaymentById_success(t *testing.T) {
+
+	svc := &Service{}
+	acc, err := svc.RegisterAccount("09")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	err = svc.Deposit(acc.ID, 100)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	pay, err := svc.Pay(acc.ID, 50, "auto")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	pay2, err := svc.FindPaymentByID(pay.ID)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if !reflect.DeepEqual(pay, pay2) {
+		t.Errorf("\ninvalid result, \ngot:  %v, \nwant: %v", pay, pay2)
+	}
+}
+
+func TestService_Reject_success(t *testing.T) {
+
+	svc := &Service{}
+	acc, err := svc.RegisterAccount("09")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	err = svc.Deposit(acc.ID, 100)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	pay, err := svc.Pay(acc.ID, 50, "auto")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	err = svc.Reject(pay.ID)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if acc.Balance!=100 {
+		t.Errorf("\ninvalid result, \ngot:  %v, \nwant: 100", acc.Balance)
+	}
 }
