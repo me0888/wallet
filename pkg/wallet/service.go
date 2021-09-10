@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/me0888/wallet/pkg/types"
@@ -11,6 +12,7 @@ var ErrPhoneRegistered = errors.New("phone alredy registred")
 var ErrAmmountMustBePositive = errors.New("amount must be greater 0")
 var ErrAccountNotFound = errors.New("account not found")
 var ErrNotEnoughBalance = errors.New("Not Enough Balance")
+var ErrPaymentNotFound = errors.New("payment not found")
 
 type Service struct {
 	nextAccountID int64
@@ -109,4 +111,66 @@ func (s *Service) FindAccountByID(accountID int64) (*types.Account, error) {
 	}
 
 	return account, nil
+}
+
+func (s *Service) FindPaymentByID(paymentID string) (*types.Payment, error) {
+	var payment *types.Payment
+	for _, pay := range s.payments {
+		if pay.ID == paymentID {
+			payment = pay
+		}
+	}
+
+	if payment == nil {
+		return nil, ErrPaymentNotFound
+	}
+
+	return payment, nil
+}
+
+func (s *Service) Reject(paymentID string) error {
+	pay, err := s.FindPaymentByID(paymentID)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	pay.Status = types.PaymentStatusFail
+
+	acc, err := s.FindAccountByID(pay.AccountID)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	acc.Balance += pay.Amount
+
+	return nil
+
+}
+
+
+func (s *Service) Repeat(paymentID string) (*types.Payment, error) {
+	pay, err := s.FindPaymentByID(paymentID)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	acc, err := s.FindAccountByID(pay.AccountID)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	payID := uuid.New().String()
+	payment := &types.Payment{
+		ID:        payID,
+		AccountID: acc.ID,
+		Amount:    pay.Amount,
+		Category:  pay.Category,
+		Status:    types.PaymentStatusInProgress,
+	}
+	s.payments = append(s.payments, payment)
+	return payment, nil
 }
