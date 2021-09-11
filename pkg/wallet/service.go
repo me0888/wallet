@@ -622,3 +622,52 @@ func (s *Service) SumPayments(goroutines int) types.Money {
 	wg.Wait()
 	return types.Money(sum)
 }
+
+func (s *Service) FilterPayments(accountID int64, goroutines int) ([]types.Payment, error) {
+	_, err := s.FindAccountByID(accountID)
+	if err != nil {
+		return nil, ErrAccountNotFound
+	}
+	if goroutines == 0 {
+		goroutines = 1
+	}
+	wg := sync.WaitGroup{}
+	wg.Add(goroutines)
+	mu := sync.Mutex{}
+	filter := []types.Payment{}
+	lengthOfPayments := len(s.payments)
+	count := lengthOfPayments / goroutines
+	if lengthOfPayments%goroutines != 0 {
+		count = count + 1
+	}
+	for i := 0; i < goroutines; i++ {
+		start := i * count
+		end := (i + 1) * count
+		if end >= lengthOfPayments {
+			end = lengthOfPayments
+		}
+		if start >= lengthOfPayments {
+			break
+		}
+		go func() {
+			defer wg.Done()
+			for i := start; i < end; i++ {
+				if s.payments[i].AccountID == accountID {
+					mu.Lock()
+					filter = append(filter, types.Payment{
+						ID:        s.payments[i].ID,
+						AccountID: s.payments[i].AccountID,
+						Amount:    s.payments[i].Amount,
+						Category:  s.payments[i].Category,
+						Status:    s.payments[i].Status,
+					})
+					mu.Unlock()
+				}
+			}
+		}()
+
+	}
+
+	wg.Wait()
+	return filter, nil
+}
