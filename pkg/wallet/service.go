@@ -320,3 +320,69 @@ func (s *Service) ImportFromFile(path string) error {
 	}
 	return nil
 }
+
+func (s *Service) Export(dir string) error {
+	_, err := os.Stat(dir)
+	if os.IsNotExist(err) {
+		err := os.Mkdir(dir, os.ModeDir)
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+	}
+
+	result := ""
+	for _, acc := range s.accounts {
+		result += strconv.FormatInt(acc.ID, 10) + ";" +
+			string(acc.Phone) + ";" +
+			strconv.FormatInt(int64(acc.Balance), 10) + "\n"
+
+		if result != "" {
+			err = os.WriteFile(dir+"/accounts.dump", []byte(result), 0666)
+			if err != nil {
+				log.Print(err)
+				return err
+			}
+		}
+	}
+
+	result = ""
+	for _, payment := range s.payments {
+
+		result += payment.ID + ";" +
+			strconv.FormatInt(payment.AccountID, 10) + ";" +
+			strconv.FormatInt(int64(payment.Amount), 10) + ";" +
+			string(payment.Category) + ";" +
+			string(payment.Status) + "\n"
+
+		if result != "" {
+			err = os.WriteFile(dir+"/payments.dump", []byte(result), 0666)
+			if err != nil {
+				log.Print(err)
+				return err
+			}
+		}
+
+	}
+
+	
+	result = ""
+	for _, favorite := range s.favorites {
+		result +=favorite.ID + ";" +
+			strconv.FormatInt(favorite.AccountID, 10) + ";" +
+			favorite.Name + ";" +
+			strconv.FormatInt(int64(favorite.Amount), 10) + ";" +
+			string(favorite.Category) + "\n"
+			
+		if result != "" {
+			err = os.WriteFile(dir+"/favorites.dump", []byte(result), 0666)
+			if err != nil {
+				log.Print(err)
+				return err
+			}
+		}
+
+	}
+
+	return err
+}
