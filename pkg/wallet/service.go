@@ -366,7 +366,7 @@ func (s *Service) Export(dir string) error {
 		}
 
 	}
-	log.Println("payments.dump: ", result)
+
 	result = ""
 	for _, favorite := range s.favorites {
 		result += favorite.ID + ";" +
@@ -386,6 +386,14 @@ func (s *Service) Export(dir string) error {
 	}
 
 	return err
+}
+
+func filesExist(path string) bool {
+	_, err := os.Stat(path)
+	if !os.IsNotExist(err) {
+		return true
+	}
+	return false
 }
 
 func (s *Service) Import(dir string) error {
@@ -429,14 +437,14 @@ func (s *Service) Import(dir string) error {
 		line := strings.TrimSuffix(string(src), "\n")
 		line = strings.TrimSuffix(line, "\r")
 		pays := strings.Split(line, "\n")
-		
+
 		for _, acc := range pays {
 			data := strings.Split(acc, ";")
 			accountID, _ := strconv.ParseInt(data[1], 10, 64)
 			amount, _ := strconv.ParseInt(data[2], 10, 64)
 			category := types.PaymentCategory(data[3])
 			status := types.PaymentStatus(data[4])
-			
+
 			pay, err := s.FindPaymentByID(data[0])
 			if err != nil {
 				payment := &types.Payment{
@@ -453,8 +461,6 @@ func (s *Service) Import(dir string) error {
 				pay.Category = category
 				pay.Status = status
 			}
-			
-			
 
 		}
 	}
@@ -502,10 +508,77 @@ func (s *Service) Import(dir string) error {
 	return nil
 }
 
-func filesExist(path string) bool {
-	_, err := os.Stat(path)
-	if !os.IsNotExist(err) {
-		return true
+func (s *Service) ExportAccountHistory(accountID int64) ([]types.Payment, error) {
+	_, err := s.FindAccountByID(accountID)
+	if err != nil {
+		log.Println(err)
+		return nil, ErrAccountNotFound
 	}
-	return false
+
+	result := []types.Payment{}
+	for _, payment := range s.payments {
+		if payment.AccountID == accountID {
+			result = append(result, *payment)
+		}
+	}
+	return result, nil
 }
+
+func (s *Service) HistoryToFiles(payments []types.Payment, dir string, records int) error {
+	if len(payments) == 0 {
+		return nil
+	}
+
+	if !filesExist(dir) {
+		err := os.Mkdir(dir, os.ModeDir)
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+	}
+	var content []string
+	for _, payment := range payments {
+		content = append(content,
+			payment.ID+";"+
+				strconv.FormatInt(payment.AccountID, 10)+";"+
+				strconv.FormatInt(int64(payment.Amount), 10)+";"+
+				string(payment.Category)+";"+
+				string(payment.Status)+"\n")
+
+	}
+	log.Println(len(payments))
+	if len(payments) <= records {
+		err := os.WriteFile(dir+"/payments.dump", []byte(strings.Join(content, "")), 0666)
+		if err != nil {
+			log.Print("err from HistoryToFiles", err)
+			return err
+		}
+		return nil
+	}
+
+	length := len(content)
+	ln := length / records
+	if length%records != 0 {
+		ln = ln + 1
+	}
+	start := 0
+	end := records
+
+	for i := 0; i < ln; i++ {
+		err := os.WriteFile(dir+"/payments"+strconv.Itoa(i+1)+".dump", []byte(strings.Join(content[start:end], "")), 0666)
+		if err != nil {
+			log.Print("err from HistoryToFiles", err)
+			return err
+		}
+		start += records
+		end += records
+		if end > length {
+			end = length
+		}
+	}
+	return nil
+
+}
+
+
+
