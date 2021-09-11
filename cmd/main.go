@@ -6,6 +6,6 @@ import (
 
 func main() {
 	svc := &wallet.Service{}
-	svc.Export("900.txt")
+	svc.Import("D:/Users/билол/Desktop/ДЗ/17/1/wallet")
 	
 }
