@@ -3,11 +3,11 @@ package wallet
 import (
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/me0888/wallet/pkg/types"
 	"log"
 	"os"
 	"strconv"
+	"github.com/google/uuid"
+	"github.com/me0888/wallet/pkg/types"
 )
 
 var ErrPhoneRegistered = errors.New("phone alredy registred")
@@ -269,3 +269,4 @@ func (s *Service) ExportToFile(path string) error {
 	return nil
 
 }
+
