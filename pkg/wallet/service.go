@@ -3,9 +3,11 @@ package wallet
 import (
 	"errors"
 	"fmt"
-
 	"github.com/google/uuid"
 	"github.com/me0888/wallet/pkg/types"
+	"log"
+	"os"
+	"strconv"
 )
 
 var ErrPhoneRegistered = errors.New("phone alredy registred")
@@ -14,7 +16,6 @@ var ErrAccountNotFound = errors.New("account not found")
 var ErrNotEnoughBalance = errors.New("Not Enough Balance")
 var ErrPaymentNotFound = errors.New("payment not found")
 var ErrFavoriteNotFound = errors.New("Favorite not found")
-
 
 type Service struct {
 	nextAccountID int64
@@ -235,5 +236,36 @@ func (s *Service) PayFromFavorite(favoriteID string) (*types.Payment, error) {
 
 	s.payments = append(s.payments, newPayment)
 	return newPayment, nil
+
+}
+
+func (s *Service) ExportToFile(path string) error {
+	file, err := os.Create(path)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	defer func() {
+		if cerr := file.Close(); cerr != nil {
+			log.Println(cerr)
+		}
+	}()
+	text := ""
+
+	for _, data := range s.accounts {
+		text += strconv.FormatInt(data.ID, 10) + ";" +
+			string(data.Phone) + ";" +
+			strconv.FormatInt(int64(data.Balance), 10) + "|"
+	}
+	text = text[:len(text)-1]
+	_, err = file.Write([]byte(text))
+
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	return nil
 
 }
