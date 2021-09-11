@@ -1,9 +1,11 @@
 package wallet
 
 import (
+	// "bufio"
 	"errors"
 	"fmt"
 	"io"
+	// "io/ioutil"
 	"log"
 	"os"
 	"strconv"
@@ -364,16 +366,15 @@ func (s *Service) Export(dir string) error {
 		}
 
 	}
-
-	
+	log.Println("payments.dump: ", result)
 	result = ""
 	for _, favorite := range s.favorites {
-		result +=favorite.ID + ";" +
+		result += favorite.ID + ";" +
 			strconv.FormatInt(favorite.AccountID, 10) + ";" +
 			favorite.Name + ";" +
 			strconv.FormatInt(int64(favorite.Amount), 10) + ";" +
 			string(favorite.Category) + "\n"
-			
+
 		if result != "" {
 			err = os.WriteFile(dir+"/favorites.dump", []byte(result), 0666)
 			if err != nil {
@@ -385,4 +386,126 @@ func (s *Service) Export(dir string) error {
 	}
 
 	return err
+}
+
+func (s *Service) Import(dir string) error {
+
+	if filesExist(dir + "/accounts.dump") {
+		src, err := os.ReadFile(dir + "/accounts.dump")
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+
+		line := strings.TrimSuffix(string(src), "\n")
+		line = strings.TrimSuffix(line, "\r")
+		accs := strings.Split(line, "\n")
+
+		for _, acc := range accs {
+			data := strings.Split(acc, ";")
+			id, _ := strconv.ParseInt(data[0], 10, 64)
+			balance, _ := strconv.ParseInt(data[2], 10, 64)
+			acc, err := s.FindAccountByID(id)
+			if err != nil {
+				acc2, err := s.RegisterAccount(types.Phone(data[1]))
+				if err != nil {
+					log.Print(err)
+					return err
+				}
+				acc2.Balance = types.Money(balance)
+			} else {
+				acc.Phone = types.Phone(data[1])
+				acc.Balance = types.Money(balance)
+			}
+		}
+	}
+
+	if filesExist(dir + "/payments.dump") {
+		src, err := os.ReadFile(dir + "/payments.dump")
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+		line := strings.TrimSuffix(string(src), "\n")
+		line = strings.TrimSuffix(line, "\r")
+		pays := strings.Split(line, "\n")
+		
+		for _, acc := range pays {
+			data := strings.Split(acc, ";")
+			accountID, _ := strconv.ParseInt(data[1], 10, 64)
+			amount, _ := strconv.ParseInt(data[2], 10, 64)
+			category := types.PaymentCategory(data[3])
+			status := types.PaymentStatus(data[4])
+			
+			pay, err := s.FindPaymentByID(data[0])
+			if err != nil {
+				payment := &types.Payment{
+					ID:        data[0],
+					AccountID: accountID,
+					Amount:    types.Money(amount),
+					Category:  category,
+					Status:    status,
+				}
+				s.payments = append(s.payments, payment)
+			} else {
+				pay.AccountID = accountID
+				pay.Amount = types.Money(amount)
+				pay.Category = category
+				pay.Status = status
+			}
+			
+			
+
+		}
+	}
+
+	if filesExist(dir + "/favorites.dump") {
+		src, err := os.ReadFile(dir + "/favorites.dump")
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+
+		line := strings.TrimSuffix(string(src), "\n")
+		line = strings.TrimSuffix(line, "\r")
+		favs := strings.Split(line, "\n")
+		for _, acc := range favs {
+			data := strings.Split(acc, ";")
+
+			accountID, _ := strconv.ParseInt(data[1], 10, 64)
+			amount, _ := strconv.ParseInt(data[3], 10, 64)
+			id := data[0]
+			name := data[2]
+			category := data[4]
+
+			favorite, err := s.FindFavoriteByID(id)
+			if err != nil {
+				nfavorite := &types.Favorite{
+					ID:        id,
+					AccountID: accountID,
+					Name:      name,
+					Amount:    types.Money(amount),
+					Category:  types.PaymentCategory(category),
+				}
+				s.favorites = append(s.favorites, nfavorite)
+
+			} else {
+				favorite.AccountID = accountID
+				favorite.Name = name
+				favorite.Amount = types.Money(amount)
+				favorite.Category = types.PaymentCategory(category)
+			}
+
+		}
+	}
+
+	return nil
+}
+
+func filesExist(path string) bool {
+	_, err := os.Stat(path)
+	if !os.IsNotExist(err) {
+		return true
+	}
+	return false
 }
