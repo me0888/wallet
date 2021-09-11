@@ -3,9 +3,12 @@ package wallet
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strconv"
+	"strings"
+
 	"github.com/google/uuid"
 	"github.com/me0888/wallet/pkg/types"
 )
@@ -270,3 +273,50 @@ func (s *Service) ExportToFile(path string) error {
 
 }
 
+func (s *Service) ImportFromFile(path string) error {
+	file, err := os.Open(path)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	defer func() {
+		err := file.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}()
+	contetnt := make([]byte, 0)
+	buf := make([]byte, 4)
+
+	for {
+		read, err := file.Read(buf)
+		if err == io.EOF {
+			contetnt = append(contetnt, buf[:read]...)
+			break
+		}
+
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+
+		contetnt = append(contetnt, buf[:read]...)
+	}
+	accs := strings.Split(string(contetnt), "|")
+	for _, acc := range accs {
+		data := strings.Split(acc, ";")
+		id, _ := strconv.ParseInt(data[0], 10, 64)
+		balance, _ := strconv.ParseInt(data[2], 10, 64)
+		s.accounts = append(s.accounts, &types.Account{
+			ID:      id,
+			Phone:   types.Phone(data[1]),
+			Balance: types.Money(balance),
+		})
+	}
+
+	for _, v := range s.accounts {
+		log.Println(v)
+	}
+	return nil
+}
