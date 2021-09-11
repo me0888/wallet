@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
+
 	// "io/ioutil"
 	"log"
 	"os"
@@ -582,3 +584,41 @@ func (s *Service) HistoryToFiles(payments []types.Payment, dir string, records i
 
 
 
+func (s *Service) SumPayments(goroutines int) types.Money {
+	if goroutines == 0 {
+		goroutines = 1
+	}
+	wg := sync.WaitGroup{}
+	wg.Add(goroutines)
+	mu := sync.Mutex{}
+	sum := 0
+	lengthOfPayments := len(s.payments)
+	count := lengthOfPayments / goroutines
+	if lengthOfPayments%goroutines != 0 {
+		count = count + 1
+	}
+	for i := 0; i < goroutines; i++ {
+		start := i * count
+		end := (i + 1) * count
+		if end >= lengthOfPayments {
+			end = lengthOfPayments
+		}
+		if start >= lengthOfPayments {
+			break
+		}
+		go func() {
+			defer wg.Done()
+			val := int64(0)
+			for i := start; i < end; i++ {
+				val += int64(s.payments[i].Amount)
+			}
+			mu.Lock()
+			sum += int(val)
+			mu.Unlock()
+		}()
+
+	}
+
+	wg.Wait()
+	return types.Money(sum)
+}

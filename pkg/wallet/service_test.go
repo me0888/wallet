@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"fmt"
+	"log"
 
 	"reflect"
 	"testing"
@@ -281,5 +282,143 @@ func Test_Service_FindFavoriteByID_Fail(t *testing.T) {
 	if err == nil {
 		t.Error(err)
 		return
+	}
+}
+
+
+func Test_Service_ExportToFile(t *testing.T) {
+	s := newTestService()
+	_, _, err := s.addAccount(defaultTestAccount)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	err = s.ExportToFile("acc.txt")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+}
+
+func Test_Service_ImportFromFile(t *testing.T) {
+	s := newTestService()
+	_, _, err := s.addAccount(defaultTestAccount)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	err = s.ImportFromFile("acc.txt")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+}
+
+func Test_Service_Export(t *testing.T) {
+	s := newTestService()
+	_, payments, err := s.addAccount(defaultTestAccount)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	payment := payments[0]
+	_, err = s.FavoritePayment(payment.ID, "auto")
+	if err != nil {
+		t.Errorf("PayFromFavorite(): can not add favorite, error = %v", err)
+		return
+	}
+
+	err = s.Export("cmd")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+}
+
+func Test_Service_Import(t *testing.T) {
+	s := newTestService()
+
+	err := s.Import("cmd")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+}
+
+func Test_Service_ExportAccountHistory(t *testing.T) {
+	s := newTestService()
+	_, _, err := s.addAccount(defaultTestAccount)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	_, err = s.ExportAccountHistory(1)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+}
+
+func Test_Service_HistoryToFiles(t *testing.T) {
+	s := newTestService()
+	_, _, err := s.addAccount(defaultTestAccount)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	his, _ := s.ExportAccountHistory(1)
+
+	err = s.HistoryToFiles(his, "cmd/3", 7)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	err = s.HistoryToFiles(his, "", 7)
+	if err == nil {
+		t.Error(err)
+		return
+	}	
+
+}
+
+func Test_Service_SumPayments(t *testing.T) {
+	s := newTestService()
+	_, _, err := s.addAccount(defaultTestAccount)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	s.SumPayments(1)
+}
+
+func testPays(s *testService) {
+
+	account, _ := s.RegisterAccount("+992000000001")
+	s.Deposit(account.ID, 80000)
+	_, _ = s.Pay(account.ID, 1, "auto")
+	_, _ = s.Pay(account.ID, 2, "auto")
+	_, _ = s.Pay(account.ID, 3, "auto")
+	_, _ = s.Pay(account.ID, 4, "auto")
+	account, _ = s.RegisterAccount("+992000000002")
+	s.Deposit(account.ID, 80000)
+	_, _ = s.Pay(account.ID, 5, "auto")
+	_, _ = s.Pay(account.ID, 6, "auto")
+	_, _ = s.Pay(account.ID, 7, "auto")
+	_, _ = s.Pay(account.ID, 8, "auto")
+}
+
+func BenchmarkSumPayments(b *testing.B) {
+	s := newTestService()
+	testPays(s)
+	want := 36
+	result := s.SumPayments(1)
+	if result != types.Money(want) {
+		b.Fatalf("invalid result, got %v, want %v", result, want)
 	}
 }
